@@ -916,7 +916,7 @@ import antfu from '@antfu/eslint-config'
 export default antfu(
   { type: 'app' },
   {
-    files: ['packages/libs/**/*.?([cm])ts', 'packages/libs/**/*.?([cm])tsx'],
+    files: ['packages/libs/**/*.{,[cm]}ts', 'packages/libs/**/*.{,[cm]}tsx'],
     rules: {
       'ts/explicit-function-return-type': ['error', {
         allowExpressions: true,
@@ -948,7 +948,7 @@ export default antfu({
 ```
 
 Type aware rules apply to TypeScript and TSX files by default, using
-`['**/*.?([cm])ts', '**/*.?([cm])tsx']`. Vue files are excluded by default because
+`['**/*.{,[cm]}ts', '**/*.{,[cm]}tsx']`. Vue files are excluded by default because
 type aware linting can substantially increase lint time. To opt in for Vue files,
 enable Vue support and include them in `filesTypeAware` while retaining the
 TypeScript and TSX patterns:
@@ -961,7 +961,7 @@ export default antfu({
   vue: true,
   typescript: {
     tsconfigPath: 'tsconfig.json',
-    filesTypeAware: ['**/*.?([cm])ts', '**/*.?([cm])tsx', '**/*.vue'],
+    filesTypeAware: ['**/*.{,[cm]}ts', '**/*.{,[cm]}tsx', '**/*.vue'],
   },
 })
 ```
