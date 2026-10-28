@@ -918,11 +918,14 @@ export default antfu(
   {
     files: ['packages/libs/**/*.{,[cm]}ts', 'packages/libs/**/*.{,[cm]}tsx'],
     rules: {
-      'ts/explicit-function-return-type': ['error', {
-        allowExpressions: true,
-        allowHigherOrderFunctions: true,
-        allowIIFEs: true,
-      }],
+      'ts/explicit-function-return-type': [
+        'error',
+        {
+          allowExpressions: true,
+          allowHigherOrderFunctions: true,
+          allowIIFEs: true,
+        }
+      ],
     },
   },
 )
@@ -968,26 +971,22 @@ export default antfu({
 
 ### Oxlint (Experimental)
 
-You can run this config with [Oxlint](https://oxc.rs/docs/guide/usage/linter.html) through [`oxlint-flat-config`](https://github.com/liangmiQwQ/oxlint-flat-config). `toOxlint()` converts the config to Oxlint's format. Rules that Oxlint has ported run natively. The rest run their original ESLint plugins as [Oxlint JS plugins](https://oxc.rs/docs/guide/usage/linter/js-plugins.html).
-
-```bash
-pnpm i -D oxlint oxlint-flat-config
-```
+You can run this config with [Oxlint](https://oxc.rs/docs/guide/usage/linter.html). `toOxlint()` converts the config to Oxlint's format with [`oxlint-flat-config`](https://github.com/liangmiQwQ/oxlint-flat-config). Rules that Oxlint has ported run natively. The rest run their original ESLint plugins as [Oxlint JS plugins](https://oxc.rs/docs/guide/usage/linter/js-plugins.html). If `oxlint` and `oxlint-flat-config` are missing, you'll be prompted to install them.
 
 ```ts
 // oxlint.config.ts
 import antfu from '@antfu/eslint-config'
 import { toOxlint } from '@antfu/eslint-config/oxlint'
-import { defineConfig } from 'oxlint-flat-config'
 
-export default defineConfig(
-  await toOxlint(antfu({
+export default await toOxlint(
+  antfu({
     // same options as in eslint.config.js
-  })),
+  }),
+  // optionally, more Oxlint flat config objects
 )
 ```
 
-For [type aware rules](#type-aware-rules), also install `oxlint-tsgolint` and add `{ options: { typeAware: true } }` to `defineConfig`.
+For [type aware rules](#type-aware-rules), also install `oxlint-tsgolint` and pass `{ options: { typeAware: true } }` to `toOxlint()`.
 
 For JS, TS, JSX and TSX files, `oxlint --fix` produces the same output as ESLint on our [fixtures](./fixtures/oxlint). The current limitations:
 

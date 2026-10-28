@@ -1,8 +1,8 @@
 import type { Linter } from 'eslint'
 import type { OxlintConfig, OxlintGlobals } from 'oxlint'
-import type { FlatConfigItem } from 'oxlint-flat-config'
+import type { ConfigInput, FlatConfigItem } from 'oxlint-flat-config'
 
-import { all, category } from 'oxlint-flat-config'
+import { ensurePackages } from './utils'
 
 interface JsPlugin {
   name: string
@@ -69,16 +69,6 @@ const optionMismatches = new Set([
   'jsx-a11y/control-has-associated-label',
 ])
 
-const nativeRules = new Set([
-  ...Object.keys(all.rules ?? {}),
-  ...Object.keys(category({
-    nursery: 'error',
-    plugins: [
-      ...new Set(Object.values(nativePlugins).flat()),
-    ],
-  }).rules ?? {}),
-])
-
 function splitRuleId(id: string): [prefix: string, name: string] {
   if (id.startsWith('node/prefer-global/')) {
     return [
@@ -95,7 +85,7 @@ function splitRuleId(id: string): [prefix: string, name: string] {
       ]
 }
 
-function toOxlintRule(id: string): { id: string, plugin?: JsPlugin } | undefined {
+function toOxlintRule(id: string, nativeRules: Set<string>): { id: string, plugin?: JsPlugin } | undefined {
   const [prefix, name] = splitRuleId(id)
   if (!optionMismatches.has(id)) {
     const scope = nativePlugins[prefix as keyof typeof nativePlugins]?.find(scope => nativeRules.has(`${scope}/${name}`))
@@ -138,11 +128,11 @@ function toGlobals(globals: Linter.Globals): OxlintGlobals {
   ]))
 }
 
-function toOxlintRules(rules: Linter.Config['rules'] = {}): Pick<FlatConfigItem, 'jsPlugins' | 'rules'> {
+function toOxlintRules(nativeRules: Set<string>, rules: Linter.Config['rules'] = {}): Pick<FlatConfigItem, 'jsPlugins' | 'rules'> {
   const jsPlugins = new Map<string, JsPlugin>()
   const converted: Record<string, Linter.RuleEntry> = {}
   for (const [id, entry] of Object.entries(rules)) {
-    const rule = entry && toOxlintRule(id)
+    const rule = entry && toOxlintRule(id, nativeRules)
     if (!rule)
       continue
     if (rule.plugin)
@@ -159,14 +149,14 @@ function toOxlintRules(rules: Linter.Config['rules'] = {}): Pick<FlatConfigItem,
   }
 }
 
-function toOxlintItem(item: Linter.Config): FlatConfigItem | undefined {
+function toOxlintItem(item: Linter.Config, nativeRules: Set<string>): FlatConfigItem | undefined {
   // Virtual files of processors, such as code blocks in Markdown, never reach Oxlint.
   if (item.files?.flat().every(file => typeof file === 'string' && /\.(?:md|astro)\//.test(file)))
     return
   if (item.ignores && Object.keys(item).every(key => key === 'name' || key === 'ignores'))
     return { ignores: item.ignores, name: item.name }
 
-  const { jsPlugins, rules } = toOxlintRules(item.rules)
+  const { jsPlugins, rules } = toOxlintRules(nativeRules, item.rules)
   // `languageOptions` is untyped in `Linter.Config`, this is the shape ESLint documents for `globals`.
   const globals = item.languageOptions?.globals as Linter.Globals | undefined
   if (!rules && !globals && !item.settings)
@@ -195,13 +185,28 @@ function toOxlintItem(item: Linter.Config): FlatConfigItem | undefined {
 }
 
 /**
- * Converts the ESLint flat config of `antfu()` into `oxlint-flat-config` config objects.
+ * Builds an Oxlint config from the ESLint flat config of `antfu()`, using `oxlint-flat-config`.
  *
  * Rules use Oxlint's native ports when available, and run the original ESLint plugins as JS plugins otherwise.
  * Rules that need a custom parser (Vue templates, Svelte, Astro, Markdown, JSON, YAML, TOML, formatters) are dropped.
+ * `configs` are appended as Oxlint flat config objects.
  *
  * @experimental
  */
-export async function toOxlint(configs: PromiseLike<Linter.Config[]> | Linter.Config[]): Promise<FlatConfigItem[]> {
-  return (await configs).flatMap(item => toOxlintItem(item) ?? [])
+export async function toOxlint(
+  eslintConfigs: PromiseLike<Linter.Config[]> | Linter.Config[],
+  ...configs: ConfigInput[]
+): Promise<OxlintConfig> {
+  await ensurePackages(['oxlint', 'oxlint-flat-config'])
+  const { all, category, defineConfig } = await import('oxlint-flat-config')
+  const nativeRules = new Set([
+    ...Object.keys(all.rules ?? {}),
+    ...Object.keys(category({
+      nursery: 'error',
+      plugins: [
+        ...new Set(Object.values(nativePlugins).flat()),
+      ],
+    }).rules ?? {}),
+  ])
+  return defineConfig((await eslintConfigs).flatMap(item => toOxlintItem(item, nativeRules) ?? []), ...configs)
 }

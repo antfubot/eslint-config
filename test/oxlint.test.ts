@@ -56,10 +56,9 @@ function runWithConfig(name: string, oxlintConfig: FlatConfigItem, configs: Opti
     await fs.writeFile(join(target, 'oxlint.config.ts'), `
 import antfu from '@antfu/eslint-config'
 import { toOxlint } from '@antfu/eslint-config/oxlint'
-import { defineConfig } from 'oxlint-flat-config'
 
-export default defineConfig(
-  await toOxlint(antfu(${JSON.stringify(configs)}, ...${JSON.stringify(items)})),
+export default await toOxlint(
+  antfu(${JSON.stringify(configs)}, ...${JSON.stringify(items)}),
   ${JSON.stringify(oxlintConfig)},
 )
 `)
